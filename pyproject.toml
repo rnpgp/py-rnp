@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "rnp"
+version = "0.1.0"
+description = "python bindings for librnp"
+authors = ["Daniel Wyatt <daniel.wyatt@ribose.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+tox = "^3.24.3"
+black = "^21.8b0"
+flake8 = "^3.9.2"
+pylint = "^2.10.2"
+tox-poetry-installer = {extras = ["poetry"], version = "^0.8.1"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
