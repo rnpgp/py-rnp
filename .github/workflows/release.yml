@@ -1,0 +1,56 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      next_version:
+        description: |
+          Next release version. Possible values: x.y.z, major, minor, patch or pre|rc|etc
+        required: true
+        default: 'skip'
+  push:
+    tags: [ v* ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - uses: snok/install-poetry@v1
+      with:
+        version: 1.1.8
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - id: cached-poetry-dependencies
+      uses: actions/cache@v2
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+
+    - if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install
+
+    - if: github.event_name == 'workflow_dispatch' && github.event.inputs.next_version != 'skip'
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        poetry version ${{ github.event.inputs.next_version }}
+
+    - run: poetry build
+
+    - run: poetry publish
+      env:
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.RNP_PYPI_API_TOKEN }}
+
+    - if: github.event_name == 'workflow_dispatch' && github.event.inputs.next_version != 'skip'
+      run: |
+        git add pyproject.toml
+        git commit -m "Bump version to ${{ github.event.inputs.next_version }}"
+        git tag v${{ github.event.inputs.next_version }}
+        git push
