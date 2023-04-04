@@ -1,70 +1,98 @@
+# Copyright (c) 2021-2023 Ribose Inc.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS
+# BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
 name: Tests
 
 on:
   pull_request:
   push:
-    branches:
-      - master
+    branches: [ main ]
+    tags: [ v* ]
+  repository_dispatch:
+    types: [ run-py-rnp]
+  workflow_dispatch:
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.job }}-${{ github.head_ref || github.ref_name }}'
+  cancel-in-progress: true
 
 jobs:
-  test:
-    env:
-      MAKE_PARALLEL: 2
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python: [3.9]
-        botan: [2.18.1]
-        rnp: [master, v0.15.2]
-    runs-on: ${{ matrix.os }}
-    continue-on-error: true
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Set environment
+    - name: Setup test matrix
+      id: matrix
       run: |
-        . ci/setup-env.inc.sh
+        if [ "${{ github.event.client_payload }}" != "" ]; then
+          echo "matrix=[ '${{ github.event.client_payload.tag }}' ]" >> $GITHUB_OUTPUT;
+        else
+          echo "matrix=[ 'v0.15.2', 'v0.16.2', 'master' ]" >> $GITHUB_OUTPUT;
+        fi
+  build-and-test:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+        python: [ 3.9, 3.10, 3.11 ]
+        rnp: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
-    - name: Install build tools
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Install packages Ubuntu
+      if: matrix.os == 'ubuntu-latest'
+#     Already installed on GHA: build-essential libbz2-dev zlib1g-dev
+      run: |
+        sudo apt-get install cmake libbotan-2-dev libjson-c-dev
+        echo LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Install packages MacOS
       if: matrix.os == 'macos-latest'
-      run: |
-        brew install autoconf automake libtool
+#     Already installed on GHA: cmake make
+      run: brew install botan json-c
 
-    - name: Cache
-      id: cache
-      uses: actions/cache@v2
+    - name: Checkout rnp
+      uses: actions/checkout@v3
       with:
-        path: ${{ env.CACHE_DIR }}
-        key: ${{ matrix.os }}-botan-${{ matrix.botan }}-rnp-${{ matrix.rnp }}-${{ hashFiles('ci/**') }}-${{ hashFiles('.github/workflows/**') }}
+        repository: rnpgp/rnp
+        path: rnp
+        submodules: true
+        ref: ${{ matrix.rnp }}
 
-    - name: Build cache
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        # botan
-        git clone --depth 1 --branch "${{ matrix.botan }}" https://github.com/randombit/botan "${{ runner.temp }}/botan"
-        cd "${{ runner.temp }}/botan"
-        ./configure.py --prefix="${BOTAN_INSTALL}" --with-debug-info --cxxflags="-fno-omit-frame-pointer"
-        make -j${MAKE_PARALLEL} install
-        # json-c
-        mkdir -p "${{ runner.temp }}/json-c"
-        cd "${{ runner.temp }}/json-c"
-        wget https://s3.amazonaws.com/json-c_releases/releases/json-c-0.12.1.tar.gz -O json-c.tar.gz
-        tar xzf json-c.tar.gz --strip 1
-        autoreconf -ivf
-        env CFLAGS="-fno-omit-frame-pointer -Wno-implicit-fallthrough -g" ./configure --prefix="$JSONC_INSTALL"
-        make -j${MAKE_PARALLEL} install
-        # rnp
-        git clone https://github.com/rnpgp/rnp "${{ runner.temp }}/rnp"
-        cd "${{ runner.temp }}/rnp"
-        git checkout "${{ matrix.rnp }}"
-        cmake \
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-          -DBUILD_SHARED_LIBS=yes \
-          -DBUILD_TESTING=no \
-          -DCMAKE_PREFIX_PATH="$BOTAN_INSTALL;$JSONC_INSTALL" \
-          -DCMAKE_INSTALL_PREFIX="${RNP_INSTALL}" \
-          .
-        make -j${MAKE_PARALLEL} install
+    - name: Configure rnp
+      run:  cmake -B rnp/build -DBUILD_TESTING=OFF -DENABLE_DOC=OFF -DBUILD_SHARED_LIBS=ON rnp
+
+    - name: Build rnp
+      run:  cmake --build rnp/build
+
+    - name: Install rnp
+      run:  sudo cmake --install rnp/build
+
+    - name: Checkout py-rnp
+      uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -89,16 +117,5 @@ jobs:
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
       run: poetry install
 
-    - name: Workaround macOS SIP
-      if: matrix.os == 'macos-latest'
-      run: |
-        sudo cp -a "$JSONC_INSTALL/lib"/* /usr/local/lib
-        sudo cp -a "$BOTAN_INSTALL/lib"/* /usr/local/lib
-        sudo cp -a "$RNP_INSTALL/lib"/* /usr/local/lib
-
     - name: Test
-      run: |
-        export LD_LIBRARY_PATH="$JSONC_INSTALL/lib:$BOTAN_INSTALL/lib:$RNP_INSTALL/lib"
-        poetry run tox
-
-
+      run: poetry run tox
