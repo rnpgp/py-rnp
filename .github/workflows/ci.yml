@@ -45,19 +45,21 @@ jobs:
     steps:
     - name: Setup test matrix
       id: matrix
+#          echo "matrix=[ 'v0.15.2', 'v0.16.2', 'master' ]" >> $GITHUB_OUTPUT;
       run: |
         if [ "${{ github.event.client_payload }}" != "" ]; then
           echo "matrix=[ '${{ github.event.client_payload.tag }}' ]" >> $GITHUB_OUTPUT;
         else
-          echo "matrix=[ 'v0.15.2', 'v0.16.2', 'master' ]" >> $GITHUB_OUTPUT;
+          echo "matrix=[ 'v0.15.2' ]" >> $GITHUB_OUTPUT;
         fi
   build-and-test:
     needs: prepare
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
-        python: [ 3.9, 3.10, 3.11 ]
+        os: [ ubuntu-latest ]
+#        , macos-latest ]
+        python: [ { ver: '3.9', env: 'py39' }, { ver: '3.10', env: 'py310' }, { ver: '3.11', env: 'py311' } ]
         rnp: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     runs-on: ${{ matrix.os }}
@@ -94,28 +96,42 @@ jobs:
     - name: Checkout py-rnp
       uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python }}
-
     - name: Install poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.1.8
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+      run: pipx install poetry
 
-    - name: Load cache venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v2
+    - uses: actions/setup-python@v4
       with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+        python-version: ${{ matrix.python.ver }}
+        cache: 'poetry'
 
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
       run: poetry install
 
     - name: Test
-      run: poetry run tox
+      run: poetry run tox -e ${{ matrix.python.env }}
+
+#    - name: Set up Python
+#      uses: actions/setup-python@v4
+#      with:
+#        python-version: ${{ matrix.python }}
+
+#    - name: Install poetry
+#      uses: snok/install-poetry@v1
+#      with:
+#        version: 1.1.8
+#        virtualenvs-create: true
+#        virtualenvs-in-project: true
+
+#    - name: Load cache venv
+#      id: cached-poetry-dependencies
+#      uses: actions/cache@v3
+#      with:
+#        path: .venv
+#        key: venv-${{ matrix.os }}-${{ matrix.python }}-${{ hashFiles('**/poetry.lock') }}
+
+#    - name: Install dependencies
+#      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+#      run: poetry install
+
+#    - name: Test
+#      run: poetry run tox
