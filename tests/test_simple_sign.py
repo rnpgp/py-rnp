@@ -30,7 +30,18 @@ def test_simple_sign(rpgp, key):
 
 
 def test_simple_sign_with_options(rpgp, key):
-    halg = random.choice(rnp.features("hash algorithm"))
+
+    # SHA1 signatures produced later than 2019-01-19 are invalid.
+    # MD5 signatures produced later than 2012-01-01 are invalid.
+
+    halg = random.choice(
+        [
+            halg
+            for halg in rnp.features("hash algorithm")
+            if halg != "MD5" and halg != "SHA1"
+        ]
+    )
+
     calg = random.choice(
         [
             calg
@@ -38,6 +49,7 @@ def test_simple_sign_with_options(rpgp, key):
             if calg != "Uncompressed"
         ]
     )
+
     signature = rpgp.sign(
         key,
         rnp.Input.from_bytes(b"test data"),
