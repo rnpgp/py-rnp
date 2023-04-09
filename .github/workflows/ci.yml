@@ -72,7 +72,9 @@ jobs:
     - name: Install packages MacOS
       if: matrix.os == 'macos-latest'
 #     Already installed on GHA: cmake make
-      run: brew install botan json-c
+      run: |
+        brew install botan json-c
+        echo LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout rnp
       uses: actions/checkout@v3

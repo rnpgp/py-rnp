@@ -14,9 +14,8 @@ from ctypes import (
     c_size_t,
     c_int,
     c_char,
+    util,
 )
-from sys import platform
-
 
 class RnpException(Exception):
     def __init__(self, message, rc=0):
@@ -72,19 +71,10 @@ RNP_ERROR_NO_SUITABLE_KEY = 0x12000006
 
 
 def _load_lib():
-    libnames = []
-    if platform in ["win32", "cygin", "msys"]:
-        libnames.extend(["rnp.dll", "librnp.dll"])
-    elif platform in ["darwin", "macos"]:
-        libnames.extend(["rnp.dylib", "librnp.dylib"])
-    else:
-        libnames.extend(["rnp.so", "librnp.so"])
-
-    for libname in libnames:
-        try:
-            return CDLL(libname)
-        except OSError:
-            pass
+    try:
+        return CDLL(util.find_library("rnp"))
+    except OSError:
+        pass
     raise RnpException("Unable to load rnp native library")
 
 
