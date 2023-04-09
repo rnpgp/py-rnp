@@ -30,7 +30,7 @@ on:
     branches: [ main ]
     tags: [ v* ]
   repository_dispatch:
-    types: [ rnp update ]
+    types: [ 'rnp update' ]
   workflow_dispatch:
 
 concurrency:
@@ -56,8 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
-#        , macos-latest ]
+        os: [ ubuntu-latest, macos-latest ]
         python: [ { ver: '3.9', env: 'py39' }, { ver: '3.10', env: 'py310' }, { ver: '3.11', env: 'py311' } ]
         rnp: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
