@@ -1,0 +1,10 @@
+= Python RNP bindings
+
+image:https://github.com/rnpgp/py-rnp/actions/workflows/ci.yml/badge.svg["Build Status", link="https://github.com/rnpgp/py-rnp/actions/workflows/ci.yml"]
+
+This extension provides Python bindings to the
+https://github.com/rnpgp/rnp[librnp OpenPGP library].
+
+== Requirements
+
+This extension currently requires https://github.com/rnpgp/rnp[librnp] 0.15.2 or newer.
