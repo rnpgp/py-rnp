@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rnp"
-version = "0.1.0"
+version = "0.1.1"
 description = "python bindings for librnp"
 authors = ["Daniel Wyatt <daniel.wyatt@ribose.com>"]
 
