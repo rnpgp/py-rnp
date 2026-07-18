@@ -49,7 +49,7 @@ jobs:
         if [ "${{ github.event.client_payload }}" != "" ]; then
           echo "matrix=[ '${{ github.event.client_payload.tag }}' ]" >> $GITHUB_OUTPUT;
         else
-          echo "matrix=[ 'v0.15.2', 'v0.16.2', '' ]" >> $GITHUB_OUTPUT;
+          echo "matrix=[ 'v0.17.1', 'v0.18.1', '' ]" >> $GITHUB_OUTPUT;
         fi
   build-and-test:
     needs: prepare
@@ -57,7 +57,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest ]
-        python: [ { ver: '3.9', env: 'py39' }, { ver: '3.10', env: 'py310' }, { ver: '3.11', env: 'py311' } ]
+        python: [ { ver: '3.10', env: 'py310' }, { ver: '3.11', env: 'py311' }, { ver: '3.12', env: 'py312' }, { ver: '3.13', env: 'py313' } ]
         rnp: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     runs-on: ${{ matrix.os }}
@@ -77,15 +77,22 @@ jobs:
         echo LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Checkout rnp
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: rnpgp/rnp
         path: rnp
         submodules: true
         ref: ${{ matrix.rnp }}
 
-    - name: Configure rnp
+    - name: Configure rnp (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+#     libbotan-2-dev is Botan 2: default 'botan' backend
       run:  cmake -B rnp/build -DBUILD_TESTING=OFF -DENABLE_DOC=OFF -DBUILD_SHARED_LIBS=ON rnp
+
+    - name: Configure rnp (MacOS)
+      if: matrix.os == 'macos-latest'
+#     brew botan is Botan 3: requires the 'botan3' backend (rnp >= 0.17.1)
+      run:  cmake -B rnp/build -DBUILD_TESTING=OFF -DENABLE_DOC=OFF -DBUILD_SHARED_LIBS=ON -DCRYPTO_BACKEND=botan3 rnp
 
     - name: Build rnp
       run:  cmake --build rnp/build
@@ -94,12 +101,12 @@ jobs:
       run:  sudo cmake --install rnp/build
 
     - name: Checkout py-rnp
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install poetry
       run: pipx install poetry
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python.ver }}
         cache: 'poetry'
