@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import io
+import os
 from ctypes import (
     CDLL,
     CFUNCTYPE,
@@ -16,6 +17,7 @@ from ctypes import (
     c_char,
     util,
 )
+
 
 class RnpException(Exception):
     def __init__(self, message, rc=0):
@@ -71,8 +73,12 @@ RNP_ERROR_NO_SUITABLE_KEY = 0x12000006
 
 
 def _load_lib():
+    # LIBRNP_PATH may point to the exact library file to load.
+    path = os.environ.get("LIBRNP_PATH") or util.find_library("rnp")
+    if path is None:
+        raise RnpException("Unable to locate rnp native library")
     try:
-        return CDLL(util.find_library("rnp"))
+        return CDLL(path)
     except OSError:
         pass
     raise RnpException("Unable to load rnp native library")
@@ -105,13 +111,13 @@ def _setup(lib):
     lib.rnp_version_for.argtypes = [c_uint32, c_uint32, c_uint32]
     lib.rnp_version_for.restype = c_uint32
 
-    lib.rnp_version_major.argtypes = []
+    lib.rnp_version_major.argtypes = [c_uint32]
     lib.rnp_version_major.restype = c_uint32
 
-    lib.rnp_version_minor.argtypes = []
+    lib.rnp_version_minor.argtypes = [c_uint32]
     lib.rnp_version_minor.restype = c_uint32
 
-    lib.rnp_version_patch.argtypes = []
+    lib.rnp_version_patch.argtypes = [c_uint32]
     lib.rnp_version_patch.restype = c_uint32
 
     lib.rnp_version_commit_timestamp.argtypes = []
@@ -354,7 +360,7 @@ def _setup(lib):
     define(lib.rnp_op_sign_destroy, [c_void_p])
     define(lib.rnp_op_sign_set_armor, [c_void_p, c_bool])
     define(lib.rnp_op_sign_set_hash, [c_void_p, c_char_p])
-    define(lib.rnp_op_sign_set_compression, [c_void_p, c_char_p])
+    define(lib.rnp_op_sign_set_compression, [c_void_p, c_char_p, c_int])
     define(lib.rnp_op_sign_set_creation_time, [c_void_p, c_uint32])
     define(lib.rnp_op_sign_set_expiration_time, [c_void_p, c_uint32])
     define(lib.rnp_op_sign_add_signature, [c_void_p, c_void_p, POINTER(c_void_p)])

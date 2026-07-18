@@ -13,9 +13,10 @@ def test_version():
 
 
 def test_version_components():
-    assert isinstance(rnp.version_major(), int)
-    assert isinstance(rnp.version_minor(), int)
-    assert isinstance(rnp.version_patch(), int)
+    major, minor, patch = (int(x) for x in rnp.version_string().split(".")[:3])
+    assert rnp.version_major() == major
+    assert rnp.version_minor() == minor
+    assert rnp.version_patch() == patch
 
 
 def test_version_commit_time():
