@@ -1,6 +1,6 @@
 [project]
 name = "rnp"
-version = "0.1.1"
+version = "0.2.0"
 description = "python bindings for librnp"
 authors = [
     {name = "Daniel Wyatt", email = "daniel.wyatt@ribose.com"},
