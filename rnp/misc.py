@@ -35,15 +35,15 @@ def version_for(major, minor, patch):
 
 
 def version_major():
-    return _lib.rnp_version_major()
+    return _lib.rnp_version_major(_lib.rnp_version())
 
 
 def version_minor():
-    return _lib.rnp_version_minor()
+    return _lib.rnp_version_minor(_lib.rnp_version())
 
 
 def version_patch():
-    return _lib.rnp_version_patch()
+    return _lib.rnp_version_patch(_lib.rnp_version())
 
 
 def commit_time():
