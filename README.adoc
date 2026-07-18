@@ -8,9 +8,10 @@ https://github.com/rnpgp/rnp[librnp OpenPGP library].
 == Requirements
 
 This extension requires Python 3.10 or newer and
-https://github.com/rnpgp/rnp[librnp] 0.17.1 or newer.
+https://github.com/rnpgp/rnp[librnp] 0.18.1 or newer.
 
-librnp 0.18.1 or newer is strongly recommended: earlier releases are affected
-by https://nvd.nist.gov/vuln/detail/CVE-2025-13470[CVE-2025-13470], which
+librnp 0.18.1 fixes
+https://nvd.nist.gov/vuln/detail/CVE-2025-13470[CVE-2025-13470], which
 caused PKESK session keys to be generated without cryptographically random
-values.
+values. Earlier releases are unsupported (0.17.x also misbehaves in the
+key-lifetime API).

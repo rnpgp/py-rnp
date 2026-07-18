@@ -49,7 +49,7 @@ jobs:
         if [ "${{ github.event.client_payload }}" != "" ]; then
           echo "matrix=[ '${{ github.event.client_payload.tag }}' ]" >> $GITHUB_OUTPUT;
         else
-          echo "matrix=[ 'v0.17.1', 'v0.18.1', '' ]" >> $GITHUB_OUTPUT;
+          echo "matrix=[ 'v0.18.1', '' ]" >> $GITHUB_OUTPUT;
         fi
   build-and-test:
     needs: prepare
