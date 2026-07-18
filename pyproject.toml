@@ -1,20 +1,25 @@
-[tool.poetry]
+[project]
 name = "rnp"
 version = "0.1.1"
 description = "python bindings for librnp"
-authors = ["Daniel Wyatt <daniel.wyatt@ribose.com>"]
+authors = [
+    {name = "Daniel Wyatt", email = "daniel.wyatt@ribose.com"},
+]
+requires-python = ">=3.10"
 
-[tool.poetry.dependencies]
-python = "^3.9"
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+tox = "^4.50"
+black = "^25.0"
+flake8 = "^7.0"
+pylint = "^3.0"
 
-[tool.poetry.dev-dependencies]
-pytest = "^7.3"
-tox = "^3.25.0"
-black = "^23.3"
-flake8 = "^3.9.2"
-pylint = "^2.10.2"
-tox-poetry-installer = {extras = ["poetry"], version = "^0.10.2"}
+[tool.pylint.messages_control]
+# ctypes simple-type constructors take an optional value, but astroid's ctypes
+# brain models __init__(self, value) as required, so every bare c_uint32() /
+# c_void_p() / c_size_t() call is a false positive here.
+disable = ["no-value-for-parameter"]
 
 [build-system]
-requires = ["poetry-core>=1.4.0"]
+requires = ["poetry-core>=2.0"]
 build-backend = "poetry.core.masonry.api"
