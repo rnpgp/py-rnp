@@ -43,6 +43,8 @@ INPUT_CLOSER = CFUNCTYPE(None, c_void_p)
 OUTPUT_WRITER = CFUNCTYPE(c_bool, c_void_p, c_void_p, c_size_t)
 OUTPUT_CLOSER = CFUNCTYPE(None, c_void_p, c_bool)
 
+KEY_SIGNATURES_CB = CFUNCTYPE(None, c_void_p, c_void_p, c_void_p, POINTER(c_uint32))
+
 RNP_LOAD_SAVE_PUBLIC_KEYS = 1 << 0
 RNP_LOAD_SAVE_SECRET_KEYS = 1 << 1
 RNP_LOAD_SAVE_PERMISSIVE = 1 << 8
@@ -68,6 +70,56 @@ RNP_JSON_DUMP_GRIP = 1 << 2
 
 RNP_KEY_SUBKEYS_ONLY = 1 << 0
 
+RNP_KEY_SIGNATURE_INVALID = 1 << 0
+RNP_KEY_SIGNATURE_UNKNOWN_KEY = 1 << 1
+RNP_KEY_SIGNATURE_NON_SELF_SIG = 1 << 2
+
+RNP_KEY_SIGNATURE_KEEP = 0
+RNP_KEY_SIGNATURE_REMOVE = 1
+
+RNP_OUTPUT_FILE_OVERWRITE = 1 << 0
+RNP_OUTPUT_FILE_RANDOM = 1 << 1
+
+RNP_SECURITY_PROHIBITED = 0
+RNP_SECURITY_INSECURE = 1
+RNP_SECURITY_DEFAULT = 2
+
+RNP_SECURITY_OVERRIDE = 1 << 0
+RNP_SECURITY_VERIFY_KEY = 1 << 1
+RNP_SECURITY_VERIFY_DATA = 1 << 2
+RNP_SECURITY_REMOVE_ALL = 1 << 16
+
+RNP_ENCRYPT_NOWRAP = 1 << 0
+
+RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT = 1 << 0
+RNP_VERIFY_REQUIRE_ALL_SIGS = 1 << 1
+RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT = 1 << 2
+
+RNP_REVOKER_SENSITIVE = 1 << 0
+
+RNP_KEY_FEATURE_MDC = 1 << 0
+RNP_KEY_FEATURE_AEAD = 1 << 1
+RNP_KEY_FEATURE_V5 = 1 << 2
+
+RNP_KEY_USAGE_CERTIFY = 1 << 0
+RNP_KEY_USAGE_SIGN = 1 << 1
+RNP_KEY_USAGE_ENCRYPT_COMMS = 1 << 2
+RNP_KEY_USAGE_ENCRYPT_STORAGE = 1 << 3
+
+RNP_KEY_SERVER_NO_MODIFY = 1 << 7
+
+RNP_SIGNATURE_REVALIDATE = 1 << 0
+
+RNP_DUMP_MPI = 1 << 0
+RNP_DUMP_RAW = 1 << 1
+RNP_DUMP_GRIP = 1 << 2
+
+RNP_CERTIFICATION_GENERIC = "generic"
+RNP_CERTIFICATION_PERSONA = "persona"
+RNP_CERTIFICATION_CASUAL = "casual"
+RNP_CERTIFICATION_POSITIVE = "positive"
+
+RNP_ERROR_NOT_FOUND = 0x10000008
 RNP_ERROR_KEY_NOT_FOUND = 0x12000005
 RNP_ERROR_NO_SUITABLE_KEY = 0x12000006
 
@@ -440,6 +492,171 @@ def _setup(lib):
     define(lib.rnp_op_encrypt_set_expiration_time, [c_void_p, c_uint32])
     define(lib.rnp_op_encrypt_set_file_mtime, [c_void_p, c_uint32])
     define(lib.rnp_op_encrypt_set_file_name, [c_void_p, c_char_p])
+    define(lib.rnp_op_encrypt_set_flags, [c_void_p, c_uint32])
+
+    # security profile
+    define(
+        lib.rnp_add_security_rule,
+        [c_void_p, c_char_p, c_char_p, c_uint32, c_uint64, c_uint32],
+    )
+    define(
+        lib.rnp_get_security_rule,
+        [
+            c_void_p,
+            c_char_p,
+            c_char_p,
+            c_uint64,
+            POINTER(c_uint32),
+            POINTER(c_uint64),
+            POINTER(c_uint32),
+        ],
+    )
+    define(
+        lib.rnp_remove_security_rule,
+        [c_void_p, c_char_p, c_char_p, c_uint32, c_uint32, c_uint64, POINTER(c_size_t)],
+    )
+    define(lib.rnp_set_timestamp, [c_void_p, c_uint64])
+    define(lib.rnp_request_password, [c_void_p, c_void_p, c_char_p, POINTER(c_char_p)])
+
+    # extended verification/decryption introspection
+    define(lib.rnp_op_verify_set_flags, [c_void_p, c_uint32])
+    define(lib.rnp_op_verify_get_format, [c_void_p, POINTER(c_char)])
+    define(lib.rnp_op_verify_get_recipient_count, [c_void_p, POINTER(c_size_t)])
+    define(lib.rnp_op_verify_get_used_recipient, [c_void_p, POINTER(c_void_p)])
+    define(lib.rnp_op_verify_get_recipient_at, [c_void_p, c_size_t, POINTER(c_void_p)])
+    define(lib.rnp_op_verify_get_symenc_count, [c_void_p, POINTER(c_size_t)])
+    define(lib.rnp_op_verify_get_used_symenc, [c_void_p, POINTER(c_void_p)])
+    define(lib.rnp_op_verify_get_symenc_at, [c_void_p, c_size_t, POINTER(c_void_p)])
+    define(lib.rnp_recipient_get_keyid, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_recipient_get_alg, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_symenc_get_cipher, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_symenc_get_aead_alg, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_symenc_get_hash_alg, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_symenc_get_s2k_type, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_symenc_get_s2k_iterations, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_op_verify_signature_get_hash, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_op_verify_signature_get_key, [c_void_p, POINTER(c_void_p)])
+    define(
+        lib.rnp_op_verify_signature_get_times,
+        [c_void_p, POINTER(c_uint32), POINTER(c_uint32)],
+    )
+
+    # extended signature introspection
+    define(lib.rnp_signature_get_key_fprint, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_signature_get_key_flags, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_signature_get_key_expiration, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_signature_get_features, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_signature_get_primary_uid, [c_void_p, POINTER(c_bool)])
+    define(
+        lib.rnp_signature_get_trust_level,
+        [c_void_p, POINTER(c_uint8), POINTER(c_uint8)],
+    )
+    define(lib.rnp_signature_get_revoker, [c_void_p, POINTER(c_char_p)])
+    define(
+        lib.rnp_signature_get_revocation_reason,
+        [c_void_p, POINTER(c_char_p), POINTER(c_char_p)],
+    )
+    define(lib.rnp_signature_get_key_server, [c_void_p, POINTER(c_char_p)])
+    define(lib.rnp_signature_get_key_server_prefs, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_signature_get_preferred_alg_count, [c_void_p, POINTER(c_size_t)])
+    define(lib.rnp_signature_get_preferred_alg, [c_void_p, c_size_t, POINTER(c_char_p)])
+    define(lib.rnp_signature_get_preferred_hash_count, [c_void_p, POINTER(c_size_t)])
+    define(
+        lib.rnp_signature_get_preferred_hash, [c_void_p, c_size_t, POINTER(c_char_p)]
+    )
+    define(lib.rnp_signature_get_preferred_zalg_count, [c_void_p, POINTER(c_size_t)])
+    define(
+        lib.rnp_signature_get_preferred_zalg, [c_void_p, c_size_t, POINTER(c_char_p)]
+    )
+    define(lib.rnp_signature_error_count, [c_void_p, POINTER(c_size_t)])
+    define(lib.rnp_signature_error_at, [c_void_p, c_size_t, POINTER(c_uint32)])
+    define(lib.rnp_signature_export, [c_void_p, c_void_p, c_uint32])
+    define(lib.rnp_signature_remove, [c_void_p, c_void_p])
+
+    # signature subpackets: rnp_signature_subpacket_at/find may fail with
+    # RNP_ERROR_NOT_FOUND during normal usage, so no errcheck is attached
+    lib.rnp_signature_subpacket_count.argtypes = [c_void_p, POINTER(c_size_t)]
+    lib.rnp_signature_subpacket_count.restype = c_uint32
+    lib.rnp_signature_subpacket_count.errcheck = _errcheck
+    lib.rnp_signature_subpacket_at.argtypes = [c_void_p, c_size_t, POINTER(c_void_p)]
+    lib.rnp_signature_subpacket_at.restype = c_uint32
+    lib.rnp_signature_subpacket_find.argtypes = [
+        c_void_p,
+        c_uint8,
+        c_bool,
+        c_size_t,
+        POINTER(c_void_p),
+    ]
+    lib.rnp_signature_subpacket_find.restype = c_uint32
+    define(
+        lib.rnp_signature_subpacket_info,
+        [c_void_p, POINTER(c_uint8), POINTER(c_bool), POINTER(c_bool)],
+    )
+    define(
+        lib.rnp_signature_subpacket_data,
+        [c_void_p, POINTER(POINTER(c_uint8)), POINTER(c_size_t)],
+    )
+    define(lib.rnp_signature_subpacket_destroy, [c_void_p])
+
+    # key certification (signature creation)
+    define(lib.rnp_key_direct_signature_create, [c_void_p, c_void_p, POINTER(c_void_p)])
+    define(
+        lib.rnp_key_certification_create,
+        [c_void_p, c_void_p, c_char_p, POINTER(c_void_p)],
+    )
+    define(
+        lib.rnp_key_revocation_signature_create, [c_void_p, c_void_p, POINTER(c_void_p)]
+    )
+    define(lib.rnp_key_signature_set_hash, [c_void_p, c_char_p])
+    define(lib.rnp_key_signature_set_creation, [c_void_p, c_uint32])
+    define(lib.rnp_key_signature_set_key_flags, [c_void_p, c_uint32])
+    define(lib.rnp_key_signature_set_key_expiration, [c_void_p, c_uint32])
+    define(lib.rnp_key_signature_set_features, [c_void_p, c_uint32])
+    define(lib.rnp_key_signature_add_preferred_alg, [c_void_p, c_char_p])
+    define(lib.rnp_key_signature_add_preferred_hash, [c_void_p, c_char_p])
+    define(lib.rnp_key_signature_add_preferred_zalg, [c_void_p, c_char_p])
+    define(lib.rnp_key_signature_set_primary_uid, [c_void_p, c_bool])
+    define(lib.rnp_key_signature_set_key_server, [c_void_p, c_char_p])
+    define(lib.rnp_key_signature_set_key_server_prefs, [c_void_p, c_uint32])
+    define(lib.rnp_key_signature_set_revocation_reason, [c_void_p, c_char_p, c_char_p])
+    define(lib.rnp_key_signature_set_revoker, [c_void_p, c_void_p, c_uint32])
+    define(lib.rnp_key_signature_set_trust_level, [c_void_p, c_uint8, c_uint8])
+    define(lib.rnp_key_signature_sign, [c_void_p])
+    define(
+        lib.rnp_key_remove_signatures, [c_void_p, c_uint32, KEY_SIGNATURES_CB, c_void_p]
+    )
+
+    # misc key functions
+    define(lib.rnp_key_get_version, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_key_is_expired, [c_void_p, POINTER(c_bool)])
+    define(lib.rnp_key_valid_till, [c_void_p, POINTER(c_uint32)])
+    define(lib.rnp_key_get_revoker_count, [c_void_p, POINTER(c_size_t)])
+    define(lib.rnp_key_get_revoker_at, [c_void_p, c_size_t, POINTER(c_char_p)])
+
+    # misc functions
+    lib.rnp_backend_string.argtypes = []
+    lib.rnp_backend_string.restype = c_char_p
+    lib.rnp_backend_version.argtypes = []
+    lib.rnp_backend_version.restype = c_char_p
+    lib.rnp_buffer_clear.argtypes = [c_void_p, c_size_t]
+    lib.rnp_buffer_clear.restype = None
+
+    define(lib.rnp_op_generate_set_request_password, [c_void_p, c_bool])
+    define(lib.rnp_dump_packets_to_output, [c_void_p, c_void_p, c_uint32])
+    define(lib.rnp_output_to_file, [POINTER(c_void_p), c_char_p, c_uint32])
+    define(lib.rnp_output_to_armor, [c_void_p, POINTER(c_void_p), c_char_p])
+    define(lib.rnp_output_write, [c_void_p, c_void_p, c_size_t, POINTER(c_size_t)])
+    define(lib.rnp_output_finish, [c_void_p])
+    define(lib.rnp_output_pipe, [c_void_p, c_void_p])
+    define(lib.rnp_output_armor_set_line_length, [c_void_p, c_size_t])
+
+    # stdio streams
+    define(lib.rnp_input_from_stdin, [POINTER(c_void_p)])
+    define(lib.rnp_output_to_stdout, [POINTER(c_void_p)])
+
+    # Curve25519 secret key bits tweaking
+    define(lib.rnp_key_25519_bits_tweak, [c_void_p])
+    define(lib.rnp_key_25519_bits_tweaked, [c_void_p, POINTER(c_bool)])
 
 
 def _encode(value):

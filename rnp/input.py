@@ -31,6 +31,12 @@ class Input:
         return Input(obj)
 
     @staticmethod
+    def from_stdin():
+        obj = c_void_p()
+        _lib.rnp_input_from_stdin(byref(obj))
+        return Input(obj)
+
+    @staticmethod
     def from_bytes(data):
         obj = c_void_p()
         buf = (c_uint8 * len(data)).from_buffer_copy(data)

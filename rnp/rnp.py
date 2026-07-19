@@ -8,6 +8,8 @@ from ctypes import (
     c_char_p,
     c_void_p,
     c_size_t,
+    c_uint32,
+    c_uint64,
     byref,
     c_char,
     addressof,
@@ -442,6 +444,91 @@ class Rnp:
         with Output.default(outp) as outp:
             _lib.rnp_decrypt(self._obj, inp.obj(), outp.obj())
             return outp.default_output()
+
+    def add_security_rule(self, feature_type, name, level, from_time=0, flags=0):
+        """Add a security rule, overriding the default algorithm security
+        settings. Rules should be added before keyrings are loaded (or keyrings
+        should be reloaded afterwards), as key signature validation results are
+        cached.
+
+        Example: allow verification of data signatures made with SHA-1 after
+        the default cutoff date (2019-01-19):
+
+            rnp.add_security_rule(
+                "hash algorithm",
+                "SHA1",
+                rnp.RNP_SECURITY_DEFAULT,
+                from_time=0,
+                flags=rnp.RNP_SECURITY_OVERRIDE,
+            )
+
+        and later remove it with (parameters must match the added rule exactly):
+
+            rnp.remove_security_rule(
+                "hash algorithm",
+                "SHA1",
+                level=rnp.RNP_SECURITY_DEFAULT,
+                flags=rnp.RNP_SECURITY_OVERRIDE,
+                from_time=0,
+            )
+        """
+        _lib.rnp_add_security_rule(
+            self._obj,
+            feature_type.encode("utf-8"),
+            name.encode("utf-8"),
+            flags,
+            from_time,
+            level,
+        )
+
+    def get_security_rule(self, feature_type, name, check_time=0, usage=0):
+        flags = c_uint32(usage)
+        from_time = c_uint64()
+        level = c_uint32()
+        _lib.rnp_get_security_rule(
+            self._obj,
+            feature_type.encode("utf-8"),
+            name.encode("utf-8"),
+            check_time,
+            byref(flags),
+            byref(from_time),
+            byref(level),
+        )
+        return {"flags": flags.value, "from": from_time.value, "level": level.value}
+
+    def remove_security_rule(
+        self, feature_type=None, name=None, level=0, flags=0, from_time=0
+    ):
+        removed = c_size_t()
+        _lib.rnp_remove_security_rule(
+            self._obj,
+            _encode(feature_type),
+            _encode(name),
+            level,
+            flags,
+            from_time,
+            byref(removed),
+        )
+        return removed.value
+
+    def set_timestamp(self, timestamp):
+        """Override the timestamp used in all operations instead of the system
+        time. Zero value restores the original behaviour."""
+        _lib.rnp_set_timestamp(self._obj, timestamp)
+
+    def request_password(self, key=None, context=None):
+        """Request a password via the configured password provider."""
+        password = c_char_p()
+        try:
+            _lib.rnp_request_password(
+                self._obj, _obj(key), _encode(context), byref(password)
+            )
+            # pylint: disable=E1101
+            return password.value.decode("utf-8")
+        finally:
+            if password.value:
+                _lib.rnp_buffer_clear(password, len(password.value))
+            _lib.rnp_buffer_destroy(password)
 
     def set_password_provider(self, provider):
         if provider is None:

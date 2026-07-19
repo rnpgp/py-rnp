@@ -1,4 +1,4 @@
-from ctypes import pointer, c_uint8, c_char_p, c_bool, c_size_t, byref
+from ctypes import pointer, c_uint8, c_char, c_char_p, c_bool, c_size_t, byref
 import json
 
 from .lib import (
@@ -9,6 +9,9 @@ from .lib import (
     RNP_JSON_DUMP_MPI,
     RNP_JSON_DUMP_RAW,
     RNP_JSON_DUMP_GRIP,
+    RNP_DUMP_MPI,
+    RNP_DUMP_RAW,
+    RNP_DUMP_GRIP,
 )
 from .output import Output
 
@@ -19,6 +22,14 @@ def version_string():
 
 def version_string_full():
     return _lib.rnp_version_string_full().decode("ascii")
+
+
+def backend_string():
+    return _lib.rnp_backend_string().decode("ascii")
+
+
+def backend_version():
+    return _lib.rnp_backend_version().decode("ascii")
 
 
 def version(ver=None):
@@ -172,6 +183,26 @@ def parse(inp, mpi=False, raw=False, grip=False):
         return None
     finally:
         _lib.rnp_buffer_destroy(jsn)
+
+
+def dump_packets(inp, outp=None, mpi=False, raw=False, grip=False):
+    inp = _inp(inp)
+    flags = _flags(
+        [
+            (mpi, RNP_DUMP_MPI),
+            (raw, RNP_DUMP_RAW),
+            (grip, RNP_DUMP_GRIP),
+        ]
+    )
+    with Output.default(outp) as outp:
+        _lib.rnp_dump_packets_to_output(inp.obj(), outp.obj(), flags)
+        return outp.default_output()
+
+
+def buffer_clear(data):
+    """Securely clear the contents of a writable buffer (e.g. bytearray)."""
+    buf = (c_char * len(data)).from_buffer(data)
+    _lib.rnp_buffer_clear(buf, len(data))
 
 
 def guess_contents(inp):

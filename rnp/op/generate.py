@@ -12,6 +12,7 @@ class Generate:
         self._qbits = None
         self._curve = None
         self._password = None
+        self._request_password = None
         self._cipher = None
         self._s2k_hashalg = None
         self._protection_mode = None
@@ -87,6 +88,15 @@ class Generate:
     def password(self, value):
         _lib.rnp_op_generate_set_protection_password(self.obj(), value.encode("utf-8"))
         self._password = value
+
+    @property
+    def request_password(self):
+        return self._request_password
+
+    @request_password.setter
+    def request_password(self, value):
+        _lib.rnp_op_generate_set_request_password(self.obj(), value)
+        self._request_password = value
 
     @property
     def cipher(self):

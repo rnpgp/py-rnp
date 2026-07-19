@@ -12,7 +12,14 @@ from ctypes import (
     CFUNCTYPE,
 )
 
-from .lib import _lib
+from .lib import (
+    _lib,
+    _flags,
+    _encode,
+    _inp,
+    RNP_OUTPUT_FILE_OVERWRITE,
+    RNP_OUTPUT_FILE_RANDOM,
+)
 
 
 class DefaultOutput:
@@ -45,6 +52,38 @@ class Output:
         obj = c_void_p()
         _lib.rnp_output_to_path(byref(obj), path.encode("utf-8"))
         return Output(obj)
+
+    @staticmethod
+    def to_stdout():
+        obj = c_void_p()
+        _lib.rnp_output_to_stdout(byref(obj))
+        return Output(obj)
+
+    @staticmethod
+    def to_file(path, overwrite=False, random=False):
+        obj = c_void_p()
+        flags = _flags(
+            [
+                (overwrite, RNP_OUTPUT_FILE_OVERWRITE),
+                (random, RNP_OUTPUT_FILE_RANDOM),
+            ]
+        )
+        _lib.rnp_output_to_file(byref(obj), path.encode("utf-8"), flags)
+        return Output(obj)
+
+    @staticmethod
+    def to_armor(base, typ=None):
+        obj = c_void_p()
+        _lib.rnp_output_to_armor(base.obj(), byref(obj), _encode(typ))
+        outp = Output(obj)
+        # The armor stream writes through the base output and keeps a raw
+        # pointer to it (rnp_output_t::app_ctx), so the base handle must
+        # stay alive for the armor output's whole lifetime and be destroyed
+        # only after it. Holding a reference here guarantees both, since
+        # __del__ runs (destroying the armor handle) before instance
+        # attributes are released (destroying the base handle).
+        outp._base = base
+        return outp
 
     @staticmethod
     def to_bytes(max_alloc=0):
@@ -93,6 +132,22 @@ class Output:
     # private
     def default_output(self):
         return None
+
+    def write(self, data):
+        written = c_size_t()
+        buf = (c_uint8 * len(data)).from_buffer_copy(data)
+        _lib.rnp_output_write(self._obj, buf, len(data), byref(written))
+        return written.value
+
+    def pipe(self, inp):
+        inp = _inp(inp)
+        _lib.rnp_output_pipe(inp.obj(), self._obj)
+
+    def finish(self):
+        _lib.rnp_output_finish(self._obj)
+
+    def set_armor_line_length(self, llen):
+        _lib.rnp_output_armor_set_line_length(self._obj, llen)
 
     def bytes(self):
         buf = pointer(c_uint8())
