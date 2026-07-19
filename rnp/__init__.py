@@ -8,6 +8,7 @@ __all__ = [
     "UID",
     "Signature",
     "SignatureSubpacket",
+    "KeySignature",
     "Recipient",
     "Symenc",
     "Generate",
@@ -38,6 +39,24 @@ __all__ = [
     "RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT",
     "RNP_VERIFY_REQUIRE_ALL_SIGS",
     "RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT",
+    "RNP_KEY_USAGE_CERTIFY",
+    "RNP_KEY_USAGE_SIGN",
+    "RNP_KEY_USAGE_ENCRYPT_COMMS",
+    "RNP_KEY_USAGE_ENCRYPT_STORAGE",
+    "RNP_KEY_FEATURE_MDC",
+    "RNP_KEY_FEATURE_AEAD",
+    "RNP_KEY_FEATURE_V5",
+    "RNP_KEY_SERVER_NO_MODIFY",
+    "RNP_REVOKER_SENSITIVE",
+    "RNP_KEY_SIGNATURE_INVALID",
+    "RNP_KEY_SIGNATURE_UNKNOWN_KEY",
+    "RNP_KEY_SIGNATURE_NON_SELF_SIG",
+    "RNP_KEY_SIGNATURE_KEEP",
+    "RNP_KEY_SIGNATURE_REMOVE",
+    "RNP_CERTIFICATION_GENERIC",
+    "RNP_CERTIFICATION_PERSONA",
+    "RNP_CERTIFICATION_CASUAL",
+    "RNP_CERTIFICATION_POSITIVE",
 ]
 from .rnp import Rnp
 from .lib import (
@@ -45,12 +64,31 @@ from .lib import (
     RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT,
     RNP_VERIFY_REQUIRE_ALL_SIGS,
     RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT,
+    RNP_KEY_USAGE_CERTIFY,
+    RNP_KEY_USAGE_SIGN,
+    RNP_KEY_USAGE_ENCRYPT_COMMS,
+    RNP_KEY_USAGE_ENCRYPT_STORAGE,
+    RNP_KEY_FEATURE_MDC,
+    RNP_KEY_FEATURE_AEAD,
+    RNP_KEY_FEATURE_V5,
+    RNP_KEY_SERVER_NO_MODIFY,
+    RNP_REVOKER_SENSITIVE,
+    RNP_KEY_SIGNATURE_INVALID,
+    RNP_KEY_SIGNATURE_UNKNOWN_KEY,
+    RNP_KEY_SIGNATURE_NON_SELF_SIG,
+    RNP_KEY_SIGNATURE_KEEP,
+    RNP_KEY_SIGNATURE_REMOVE,
+    RNP_CERTIFICATION_GENERIC,
+    RNP_CERTIFICATION_PERSONA,
+    RNP_CERTIFICATION_CASUAL,
+    RNP_CERTIFICATION_POSITIVE,
 )
 from .input import Input
 from .output import Output
 from .key import Key
 from .uid import UID
 from .signature import Signature, SignatureSubpacket
+from .key_signature import KeySignature
 from .recipient import Recipient
 from .symenc import Symenc
 from .op.generate import Generate

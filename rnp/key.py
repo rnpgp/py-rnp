@@ -9,6 +9,7 @@ from ctypes import (
     c_bool,
     c_void_p,
     byref,
+    cast,
     pointer,
     addressof,
 )
@@ -17,6 +18,7 @@ from .lib import (
     _lib,
     _encode,
     _flags,
+    KEY_SIGNATURES_CB,
     RNP_KEY_EXPORT_ARMORED,
     RNP_KEY_EXPORT_PUBLIC,
     RNP_KEY_EXPORT_SECRET,
@@ -28,6 +30,9 @@ from .lib import (
     RNP_KEY_REMOVE_PUBLIC,
     RNP_KEY_REMOVE_SECRET,
     RNP_KEY_REMOVE_SUBKEYS,
+    RNP_KEY_SIGNATURE_INVALID,
+    RNP_KEY_SIGNATURE_UNKNOWN_KEY,
+    RNP_KEY_SIGNATURE_NON_SELF_SIG,
     RNP_JSON_DUMP_MPI,
     RNP_JSON_DUMP_RAW,
     RNP_JSON_DUMP_GRIP,
@@ -357,6 +362,60 @@ class Key:
         result = c_uint64()
         _lib.rnp_key_valid_till64(self._obj, byref(result))
         return result.value
+
+    def valid_till(self):
+        result = c_uint32()
+        _lib.rnp_key_valid_till(self._obj, byref(result))
+        return result.value
+
+    def version(self):
+        ver = c_uint32()
+        _lib.rnp_key_get_version(self._obj, byref(ver))
+        return ver.value
+
+    def is_expired(self):
+        return self._bool_property(_lib.rnp_key_is_expired)
+
+    def revokers(self):
+        count = c_size_t()
+        _lib.rnp_key_get_revoker_count(self._obj, byref(count))
+        for i in range(count.value):
+            revoker = c_char_p()
+            try:
+                _lib.rnp_key_get_revoker_at(self._obj, i, byref(revoker))
+                # pylint: disable=E1101
+                yield revoker.value.decode("ascii")
+            finally:
+                _lib.rnp_buffer_destroy(revoker)
+
+    def remove_signature(self, sig):
+        _lib.rnp_signature_remove(self._obj, sig.obj())
+
+    def remove_signatures(
+        self, invalid=False, unknown_key=False, non_self=False, callback=None
+    ):
+        flags = _flags(
+            [
+                (invalid, RNP_KEY_SIGNATURE_INVALID),
+                (unknown_key, RNP_KEY_SIGNATURE_UNKNOWN_KEY),
+                (non_self, RNP_KEY_SIGNATURE_NON_SELF_SIG),
+            ]
+        )
+        if callback is None:
+            _lib.rnp_key_remove_signatures(
+                self._obj, flags, cast(None, KEY_SIGNATURES_CB), None
+            )
+            return
+
+        def _proxy(_ffi, _ctx, sig, action):
+            from .signature import Signature
+
+            new_action = callback(Signature(sig, free=False), action.contents.value)
+            if new_action is not None:
+                action.contents.value = new_action
+
+        sigcb = KEY_SIGNATURES_CB(_proxy)
+        _lib.rnp_key_remove_signatures(self._obj, flags, sigcb, None)
 
     def _export(self, armored, public_key, secret_key, include_subkeys, outp):
         flags = _flags(
