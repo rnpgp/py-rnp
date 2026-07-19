@@ -1,3 +1,4 @@
+import gc
 import os
 
 import pytest
@@ -118,6 +119,32 @@ def test_output_armor_line_length():
     outp = rnp.Output.to_armor(rnp.Output.to_bytes(), "message")
     with pytest.raises(rnp.RnpException):
         outp.set_armor_line_length(8)
+
+
+def test_output_armor_base_lifetime():
+    # Regression test for heap corruption: the armor output writes through
+    # its base output (and touches it again when destroyed), so the base
+    # handle must be kept alive for the armor output's whole lifetime.
+    # Previously a temporary base was finalized immediately and the armor
+    # stream wrote through freed memory (detected on Linux/glibc).
+    for _ in range(50):
+        outp = rnp.Output.to_armor(rnp.Output.to_bytes(), "message")
+        outp.write(b"some armored data")
+        del outp
+        gc.collect()
+        # churn allocations so a freed block would be reused
+        junk = [bytearray(size) for size in (64, 128, 256, 512)]
+        del junk
+        gc.collect()
+
+    # explicitly dropping the base reference first must be safe as well
+    base = rnp.Output.to_bytes()
+    outp = rnp.Output.to_armor(base, "message")
+    outp.write(b"some armored data")
+    del base
+    gc.collect()
+    del outp
+    gc.collect()
 
 
 def test_dump_packets(rpgp, key):

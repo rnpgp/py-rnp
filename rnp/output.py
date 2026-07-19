@@ -69,7 +69,15 @@ class Output:
     def to_armor(base, typ=None):
         obj = c_void_p()
         _lib.rnp_output_to_armor(base.obj(), byref(obj), _encode(typ))
-        return Output(obj)
+        outp = Output(obj)
+        # The armor stream writes through the base output and keeps a raw
+        # pointer to it (rnp_output_t::app_ctx), so the base handle must
+        # stay alive for the armor output's whole lifetime and be destroyed
+        # only after it. Holding a reference here guarantees both, since
+        # __del__ runs (destroying the armor handle) before instance
+        # attributes are released (destroying the base handle).
+        outp._base = base
+        return outp
 
     @staticmethod
     def to_bytes(max_alloc=0):
