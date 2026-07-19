@@ -54,6 +54,12 @@ class Output:
         return Output(obj)
 
     @staticmethod
+    def to_stdout():
+        obj = c_void_p()
+        _lib.rnp_output_to_stdout(byref(obj))
+        return Output(obj)
+
+    @staticmethod
     def to_file(path, overwrite=False, random=False):
         obj = c_void_p()
         flags = _flags(
