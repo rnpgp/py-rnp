@@ -17,6 +17,7 @@ class Encrypt:
         self._lifetime = None
         self._file_mtime = None
         self._filename = None
+        self._flags = None
         self._io = io
 
     def __del__(self):
@@ -126,6 +127,15 @@ class Encrypt:
     def filename(self, name):
         self._filename = name
         _lib.rnp_op_encrypt_set_file_name(self._obj, _encode(name))
+
+    @property
+    def flags(self):
+        return self._flags
+
+    @flags.setter
+    def flags(self, flags):
+        _lib.rnp_op_encrypt_set_flags(self._obj, flags)
+        self._flags = flags
 
     def add_recipient(self, recipient):
         assert isinstance(recipient, Key)
