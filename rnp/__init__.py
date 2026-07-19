@@ -7,6 +7,9 @@ __all__ = [
     "Key",
     "UID",
     "Signature",
+    "SignatureSubpacket",
+    "Recipient",
+    "Symenc",
     "Generate",
     "Sign",
     "Verify",
@@ -32,14 +35,24 @@ __all__ = [
     "parse",
     "guess_contents",
     "check",
+    "RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT",
+    "RNP_VERIFY_REQUIRE_ALL_SIGS",
+    "RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT",
 ]
 from .rnp import Rnp
-from .lib import RnpException
+from .lib import (
+    RnpException,
+    RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT,
+    RNP_VERIFY_REQUIRE_ALL_SIGS,
+    RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT,
+)
 from .input import Input
 from .output import Output
 from .key import Key
 from .uid import UID
-from .signature import Signature
+from .signature import Signature, SignatureSubpacket
+from .recipient import Recipient
+from .symenc import Symenc
 from .op.generate import Generate
 from .op.sign import Sign
 from .op.verify import Verify
