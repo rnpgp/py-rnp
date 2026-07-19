@@ -650,6 +650,14 @@ def _setup(lib):
     define(lib.rnp_output_pipe, [c_void_p, c_void_p])
     define(lib.rnp_output_armor_set_line_length, [c_void_p, c_size_t])
 
+    # stdio streams
+    define(lib.rnp_input_from_stdin, [POINTER(c_void_p)])
+    define(lib.rnp_output_to_stdout, [POINTER(c_void_p)])
+
+    # Curve25519 secret key bits tweaking
+    define(lib.rnp_key_25519_bits_tweak, [c_void_p])
+    define(lib.rnp_key_25519_bits_tweaked, [c_void_p, POINTER(c_bool)])
+
 
 def _encode(value):
     if isinstance(value, str):
